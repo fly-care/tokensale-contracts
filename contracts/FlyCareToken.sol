@@ -11,7 +11,7 @@ contract FlyCareToken is MintableToken, PausableToken, BurnableToken {
     string public constant symbol = "FCC";
     uint8 public constant decimals = 18;
 
-    function FlyCareToken() {
+    function FlyCareToken() public {
         pause();
     }
 }
