@@ -5,7 +5,7 @@
     "curly": true,        // Require {} for every new block or scope.
     "devel": false,       // Allow development statements e.g. `console.log();`.
     "eqeqeq": true,       // Require triple equals i.e. `===`.
-    // "esnext": true,       // Allow ES.next specific features such as `const` and `let`.
+    "esnext": true,       // Allow ES.next specific features such as `const` and `let`.
     "freeze": true,       // Forbid overwriting prototypes of native objects such as Array, Date and so on.
     "immed": true,        // Require immediate invocations to be wrapped in parens e.g. `( function(){}() );`
     "indent": 2,          // Specify indentation spacing
