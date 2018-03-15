@@ -1,16 +1,17 @@
 pragma solidity ^0.4.18;
 
-import "zeppelin-solidity/contracts/crowdsale/RefundableCrowdsale.sol";
+import "zeppelin-solidity/contracts/crowdsale/distribution/RefundableCrowdsale.sol";
+import "zeppelin-solidity/contracts/crowdsale/emission/MintedCrowdsale.sol";
+import "zeppelin-solidity/contracts/crowdsale/validation/TimedCrowdsale.sol";
 import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import "./TokenCappedCrowdsale.sol";
 import "./FlyCareToken.sol";
 
 
-contract FlyCareTokenSale is TokenCappedCrowdsale, RefundableCrowdsale, Pausable {
+contract FlyCareTokenSale is TokenCappedCrowdsale, TimedCrowdsale, RefundableCrowdsale, MintedCrowdsale, Pausable {
     using SafeMath for uint256;
 
     // Constants
-    uint256 constant private BIG_BUYER_THRESHOLD = 40 * 10**18; // 40 ETH
     uint256 constant public RESERVE_AMOUNT = 105000000 * 10**18; // 105M FCC
     // MAX_TEAM_AMOUNT = 75000000
     // PreSale CAP : 75000000
@@ -40,10 +41,10 @@ contract FlyCareTokenSale is TokenCappedCrowdsale, RefundableCrowdsale, Pausable
         address _wallet,
         uint64[4] _salePeriods
       ) public
+      Crowdsale(_rate, _wallet, new FlyCareToken())
       TokenCappedCrowdsale(_cap)
-      FinalizableCrowdsale()
+      TimedCrowdsale(_startTime, _endTime)
       RefundableCrowdsale(_goal)
-      Crowdsale(_startTime, _endTime, _rate, _wallet)
     {
         require(_goal.mul(_rate) <= _cap);
 
@@ -53,21 +54,19 @@ contract FlyCareTokenSale is TokenCappedCrowdsale, RefundableCrowdsale, Pausable
         salePeriods = _salePeriods;
     }
 
-    function createTokenContract() internal returns (MintableToken) {
-        return new FlyCareToken();
+    /**
+     * @dev Extend parent behavior requiring the sale not to be paused.
+     * @param _beneficiary Token purchaser
+     * @param _weiAmount Amount of wei contributed
+     */
+    function _preValidatePurchase(address _beneficiary, uint256 _weiAmount) internal {
+        require(!paused);
+        super._preValidatePurchase(_beneficiary, _weiAmount);
     }
 
-    function () whenNotPaused external payable {
-        super.buyTokens(msg.sender);
-    }
-
-    // low level token purchase function
-    function buyTokens(address beneficiary) whenNotPaused public payable {
-        super.buyTokens(beneficiary);
-    }
-
-    // gamification
-    function getRate(uint256 time) internal view returns (uint256) {
+    // descending rate
+    function getCurrentRate() public view returns (uint256) {
+        uint256 time = now;
         if (time <= salePeriods[0]) {
             return 3600;
         }
@@ -87,8 +86,26 @@ contract FlyCareTokenSale is TokenCappedCrowdsale, RefundableCrowdsale, Pausable
         return rate;
     }
 
+    /**
+     * @dev Overrides parent method taking into account variable rate.
+     * @param _weiAmount The value in wei to be converted into tokens
+     * @return The number of tokens _weiAmount wei will buy at present time
+     */
+    function _getTokenAmount(uint256 _weiAmount) internal view returns (uint256) {
+        uint256 currentRate = getCurrentRate();
+        return currentRate.mul(_weiAmount);
+    }
+
+    /**
+     * @dev Overrides TimedCrowdsale#hasClosed method to end sale permaturely if token cap has been reached.
+     * @return Whether crowdsale has finished
+     */
+    function hasClosed() public view returns (bool) {
+        return tokenCapReached() || super.hasClosed();
+    }
+
     function setTeamVault(address _wallet, address _vault, uint64 _shareDiv) onlyOwner public returns (bool) {
-        require(now < startTime); // Only before sale starts !
+        require(now < openingTime); // Only before sale starts !
         require(_wallet != address(0));
         require(_vault != address(0));
         require(_shareDiv > 0);
@@ -109,11 +126,11 @@ contract FlyCareTokenSale is TokenCappedCrowdsale, RefundableCrowdsale, Pausable
 
     function finalization() internal {
         if (goalReached()) {
-            bool capReached = tokenSold >= cap;
+            bool capReached = tokenSold >= tokenCap;
             if (!capReached) {
-                uint256 tokenUnsold = cap.sub(tokenSold);
+                uint256 tokenUnsold = tokenCap.sub(tokenSold);
                 // Mint unsold tokens to sale's address & burn them immediately
-                require(token.mint(this, tokenUnsold));
+                _deliverTokens(this, tokenUnsold);
                 FlyCareToken(token).burn(tokenUnsold);
             }
           
@@ -123,29 +140,20 @@ contract FlyCareTokenSale is TokenCappedCrowdsale, RefundableCrowdsale, Pausable
                 TeamMember memory member = teamMembers[memberLookup[i]];
                 if (member.vault != address(0)) {
                     var tokenAmount = tokenSold.div(member.shareDiv);
-                    require(token.mint(member.vault, tokenAmount));
+                    _deliverTokens(member.vault, tokenAmount);
                     tokenReserved = tokenReserved.sub(tokenAmount);
                 }
             }
 
             // Allocate remaining reserve to multisig wallet
-            require(token.mint(wallet, tokenReserved));
+            _deliverTokens(wallet, tokenReserved);
 
             // Finish token minting & unpause transfers
-            require(token.finishMinting());
+            require(FlyCareToken(token).finishMinting());
             FlyCareToken(token).unpause();
         }
 
         super.finalization();
     }
 
-    function bytesToBytes32(bytes memory source) internal pure returns (bytes32 result) {
-        if (source.length == 0) {
-            return 0x0;
-        }
-
-        assembly {
-            result := mload(add(source, 32))
-        }
-    }
 }

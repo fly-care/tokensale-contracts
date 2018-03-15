@@ -13,7 +13,7 @@
     "watch": "node_modules/.bin/nodemon --watch . --exec scripts/test.sh"
   },
   "dependencies": {
-    "zeppelin-solidity": "^1.6.0"
+    "zeppelin-solidity": "^1.7.0"
   },
   "devDependencies": {
     "babel-polyfill": "^6.26.0",

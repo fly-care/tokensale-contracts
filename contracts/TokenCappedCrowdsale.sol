@@ -11,55 +11,47 @@ import "zeppelin-solidity/contracts/crowdsale/Crowdsale.sol";
 contract TokenCappedCrowdsale is Crowdsale {
     using SafeMath for uint256;
 
-    uint256 public cap;
+    uint256 public tokenCap;
     uint256 public tokenSold;
 
-    function TokenCappedCrowdsale(uint256 _cap) public {
-        require(_cap > 0);
-        cap = _cap;
+    /**
+     * @dev Constructor, takes maximum number of tokens to be minted by the crowdsale.
+     * @param _tokenCap Max number of tokens to be minted
+     */
+    function TokenCappedCrowdsale(uint256 _tokenCap) public {
+      require(_tokenCap > 0);
+      tokenCap = _tokenCap;
     }
 
-    // low level token purchase function
-    function buyTokens(address beneficiary) public payable {
-        require(beneficiary != 0x0);
-        require(validPurchase());
+    /**
+     * @dev Checks whether the cap has been reached. 
+     * @return Whether the cap was reached
+     */
+    function tokenCapReached() public view returns (bool) {
+      return tokenSold >= tokenCap;
+    }
 
-        uint256 weiAmount = msg.value;
-
+    /**
+     * @dev Extend parent behavior requiring purchase to respect the minting cap.
+     * @param _beneficiary Token purchaser
+     * @param _weiAmount Amount of wei contributed
+     */
+    function _preValidatePurchase(address _beneficiary, uint256 _weiAmount) internal {
+        super._preValidatePurchase(_beneficiary, _weiAmount);
         // calculate token amount to be created
-        uint256 tokens = getTokenAmount(weiAmount);
-        require(tokenSold.add(tokens) <= cap);
-        
+        uint256 tokenAmount = _getTokenAmount(_weiAmount);
+        require(tokenSold.add(tokenAmount) <= tokenCap);
+    }
+
+    /**
+     * @dev Extend parent behavior updating the number of token sold.
+     * @param _beneficiary Address receiving the tokens
+     * @param _tokenAmount Number of tokens to be purchased
+     */
+    function _processPurchase(address _beneficiary, uint256 _tokenAmount) internal {
+        super._processPurchase(_beneficiary, _tokenAmount);
         // update state
-        weiRaised = weiRaised.add(weiAmount);
-        tokenSold = tokenSold.add(tokens);
-
-        token.mint(beneficiary, tokens);
-        TokenPurchase(
-            msg.sender,
-            beneficiary,
-            weiAmount,
-            tokens);
-
-        forwardFunds();
+        tokenSold = tokenSold.add(_tokenAmount);
     }
 
-    // Override this method to have a way to add business logic to your crowdsale when buying
-    function getTokenAmount(uint256 weiAmount) internal view returns(uint256) {
-        uint256 _rate = getRate(now);
-        return weiAmount.mul(_rate);
-    }
-
-    // low level get rate function
-    // override to create custom rate function, like giving bonus for early contributors or whitelist addresses
-    function getRate(uint256 time) internal view returns (uint256) {
-        return rate;
-    }
-
-    // overriding Crowdsale#hasEnded to add cap logic
-    // @return true if crowdsale event has ended
-    function hasEnded() public view returns (bool) {
-        bool capReached = tokenSold >= cap;
-        return capReached || super.hasEnded();
-    }
 }
