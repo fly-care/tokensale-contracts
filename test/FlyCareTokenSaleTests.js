@@ -217,10 +217,10 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
     context('after sale', function() {
 
       it('should be ended only after end', async function () {
-        let ended = await this.crowdsale.hasEnded();
+        let ended = await this.crowdsale.hasClosed();
         ended.should.equal(false);
         await increaseTimeTo(this.afterEndTime);
-        ended = await this.crowdsale.hasEnded();
+        ended = await this.crowdsale.hasClosed();
         ended.should.equal(true);
       });
 
@@ -265,25 +265,25 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
 
       it('should not be ended if under cap', async function () {
         await increaseTimeTo(this.startTime);
-        let hasEnded = await this.crowdsale.hasEnded();
-        hasEnded.should.equal(false);
+        let hasClosed = await this.crowdsale.hasClosed();
+        hasClosed.should.equal(false);
         await this.crowdsale.send(toWei(50000), {from: investor});
-        hasEnded = await this.crowdsale.hasEnded();
-        hasEnded.should.equal(false);
+        hasClosed = await this.crowdsale.hasClosed();
+        hasClosed.should.equal(false);
       });
   
       it('should not be ended if just under cap', async function () {
         await increaseTimeTo(this.startTime);
         await this.crowdsale.send(toWei(54166), {from: investor});
-        let hasEnded = await this.crowdsale.hasEnded();
-        hasEnded.should.equal(false);
+        let hasClosed = await this.crowdsale.hasClosed();
+        hasClosed.should.equal(false);
       });
   
       it('should be ended if cap reached', async function () {
         await increaseTimeTo(this.startTime + duration.days(6));
         await this.crowdsale.send(toWei(65000), {from: investor});
-        let hasEnded = await this.crowdsale.hasEnded();
-        hasEnded.should.equal(true);
+        let hasClosed = await this.crowdsale.hasClosed();
+        hasClosed.should.equal(true);
       });
 
       it('cannot be finalized by third party after ending', async function () {
