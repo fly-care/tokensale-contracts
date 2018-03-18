@@ -69,6 +69,9 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
       
       this.tokenAddr = await this.crowdsale.token();
       this.token = FlyCareToken.at(this.tokenAddr);
+
+      // Add investor to whitelist
+      await this.crowdsale.addToWhitelist(investor);
     });
 
     context('before sale', function() {
@@ -110,25 +113,17 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
       });
 
       it('should accept payments after start if whitelisted', async function () {
-          await this.crowdsale.send(smallAmt, {from: investor}).should.be.fulfilled;
-          await this.crowdsale.buyTokens(investor, {value: smallAmt, from: purchaser}).should.be.fulfilled;
+        await this.crowdsale.send(smallAmt, {from: investor}).should.be.fulfilled;
+        await this.crowdsale.buyTokens(investor, {value: smallAmt, from: purchaser}).should.be.fulfilled;
       });
 
-      //TODO: Review & adapt these after having implemented the whitelisting feature
-      // it('should reject payments after start if not whitelisted', async function () {
-      //   await this.crowdsale.send(smallAmt, {from: investor}).should.be.rejectedWith(EVMRevert);
-      //   await this.crowdsale.buyTokens(investor, {value: smallAmt, from: purchaser}).should.be.rejectedWith(EVMRevert);
-      // });
+      it('should reject payments after start if not whitelisted', async function () {
+        // Remove investor from whitelist
+        await this.crowdsale.removeFromWhitelist(investor);
 
-      // it('should accept payments from big buyer after start if whitelisted', async function () {
-      //   await this.crowdsale.send(bigAmt, {from: investor}).should.be.fulfilled;
-      //   await this.crowdsale.buyTokens(investor, {value: bigAmt, from: purchaser}).should.be.fulfilled;
-      // });
-
-      // it('should reject payments from big buyer after start if not whitelisted', async function () {
-      //   await this.crowdsale.send(bigAmt, {from: investor}).should.be.rejectedWith(EVMRevert);
-      //   await this.crowdsale.buyTokens(investor, {value: bigAmt, from: purchaser}).should.be.rejectedWith(EVMRevert);
-      // });
+        await this.crowdsale.send(smallAmt, {from: investor}).should.be.rejectedWith(EVMRevert);
+        await this.crowdsale.buyTokens(investor, {value: smallAmt, from: purchaser}).should.be.rejectedWith(EVMRevert);
+      });
 
       it('should log purchase', async function () {
         const {logs} = await this.crowdsale.sendTransaction({value: smallAmt, from: investor});
