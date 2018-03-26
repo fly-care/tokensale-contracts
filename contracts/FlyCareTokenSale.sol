@@ -2,13 +2,13 @@ pragma solidity ^0.4.18;
 
 import "zeppelin-solidity/contracts/crowdsale/distribution/RefundableCrowdsale.sol";
 import "zeppelin-solidity/contracts/crowdsale/emission/MintedCrowdsale.sol";
-import "zeppelin-solidity/contracts/crowdsale/validation/TimedCrowdsale.sol";
+import "zeppelin-solidity/contracts/crowdsale/validation/WhitelistedCrowdsale.sol";
 import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import "./TokenCappedCrowdsale.sol";
 import "./FlyCareToken.sol";
 
 
-contract FlyCareTokenSale is TokenCappedCrowdsale, TimedCrowdsale, RefundableCrowdsale, MintedCrowdsale, Pausable {
+contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCappedCrowdsale, MintedCrowdsale, Pausable {
     using SafeMath for uint256;
 
     // Constants

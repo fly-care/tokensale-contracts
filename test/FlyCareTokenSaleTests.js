@@ -69,6 +69,9 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
       
       this.tokenAddr = await this.crowdsale.token();
       this.token = FlyCareToken.at(this.tokenAddr);
+
+      // Add investor to whitelist
+      await this.crowdsale.addToWhitelist(investor);
     });
 
     context('before sale', function() {
@@ -79,7 +82,7 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
       });
 
       it('should reject payments before start', async function () {
-        await this.crowdsale.send(smallAmt, {from: investor}).should.be.rejectedWith(EVMRevert);
+        await this.crowdsale.sendTransaction({value: smallAmt, from: investor}).should.be.rejectedWith(EVMRevert);
         await this.crowdsale.buyTokens(investor, {from: purchaser, value: smallAmt}).should.be.rejectedWith(EVMRevert);
       });
 
@@ -110,25 +113,20 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
       });
 
       it('should accept payments after start if whitelisted', async function () {
-          await this.crowdsale.send(smallAmt, {from: investor}).should.be.fulfilled;
-          await this.crowdsale.buyTokens(investor, {value: smallAmt, from: purchaser}).should.be.fulfilled;
+        await this.crowdsale.sendTransaction({value: smallAmt, from: investor}).should.be.fulfilled;
+        await this.crowdsale.buyTokens(investor, {value: smallAmt, from: purchaser}).should.be.fulfilled;
       });
 
-      //TODO: Review & adapt these after having implemented the whitelisting feature
-      // it('should reject payments after start if not whitelisted', async function () {
-      //   await this.crowdsale.send(smallAmt, {from: investor}).should.be.rejectedWith(EVMRevert);
-      //   await this.crowdsale.buyTokens(investor, {value: smallAmt, from: purchaser}).should.be.rejectedWith(EVMRevert);
-      // });
+      it('should reject payments after start if not whitelisted', async function () {
+        // Remove investor from whitelist
+        await this.crowdsale.removeFromWhitelist(investor);
 
-      // it('should accept payments from big buyer after start if whitelisted', async function () {
-      //   await this.crowdsale.send(bigAmt, {from: investor}).should.be.fulfilled;
-      //   await this.crowdsale.buyTokens(investor, {value: bigAmt, from: purchaser}).should.be.fulfilled;
-      // });
+        await this.crowdsale.sendTransaction({value: smallAmt, from: investor}).should.be.rejectedWith(EVMRevert);
+        await this.crowdsale.buyTokens(investor, {value: smallAmt, from: purchaser}).should.be.rejectedWith(EVMRevert);
 
-      // it('should reject payments from big buyer after start if not whitelisted', async function () {
-      //   await this.crowdsale.send(bigAmt, {from: investor}).should.be.rejectedWith(EVMRevert);
-      //   await this.crowdsale.buyTokens(investor, {value: bigAmt, from: purchaser}).should.be.rejectedWith(EVMRevert);
-      // });
+        // Also try with owner just to prove the point
+        await this.crowdsale.send(smallAmt).should.be.rejectedWith(EVMRevert);
+      });
 
       it('should log purchase', async function () {
         const {logs} = await this.crowdsale.sendTransaction({value: smallAmt, from: investor});
@@ -166,17 +164,17 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
       });
 
       it('should accept payments within cap', async function () {
-        await this.crowdsale.send(toWei(54000), {from: investor}).should.be.fulfilled;
-        await this.crowdsale.send(toWei(166), {from: investor}).should.be.fulfilled;
+        await this.crowdsale.sendTransaction({value: toWei(54000), from: investor}).should.be.fulfilled;
+        await this.crowdsale.sendTransaction({value: toWei(166), from: investor}).should.be.fulfilled;
       });
   
       it('should reject payments outside cap', async function () {
-        await this.crowdsale.send(toWei(54166), {from: investor});
-        await this.crowdsale.send(toWei(1), {from: investor}).should.be.rejectedWith(EVMRevert);
+        await this.crowdsale.sendTransaction({value: toWei(54166), from: investor});
+        await this.crowdsale.sendTransaction({value: toWei(1), from: investor}).should.be.rejectedWith(EVMRevert);
       });
   
       it('should reject payments that exceed cap', async function () {
-        await this.crowdsale.send(toWei(54167), {from: investor}).should.be.rejectedWith(EVMRevert);
+        await this.crowdsale.sendTransaction({value: toWei(54167), from: investor}).should.be.rejectedWith(EVMRevert);
       });
 
       it('cannot be finalized before ending', async function () {
@@ -199,7 +197,7 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
       it('should reject payments when paused', async function () {
         this.crowdsale.pause({from: owner});
 
-        await this.crowdsale.send(smallAmt, {from: investor}).should.be.rejectedWith(EVMRevert);
+        await this.crowdsale.sendTransaction({value: smallAmt, from: investor}).should.be.rejectedWith(EVMRevert);
         await this.crowdsale.buyTokens(investor, {from: purchaser, value: smallAmt}).should.be.rejectedWith(EVMRevert);
       });
 
@@ -208,7 +206,7 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
         await advanceBlock();
         this.crowdsale.unpause({from: owner});
 
-        await this.crowdsale.send(smallAmt, {from: investor}).should.be.fulfilled;
+        await this.crowdsale.sendTransaction({value: smallAmt, from: investor}).should.be.fulfilled;
         await this.crowdsale.buyTokens(investor, {value: smallAmt, from: purchaser}).should.be.fulfilled;
       });
 
@@ -226,7 +224,7 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
 
       it('should reject payments after end', async function () {
         await increaseTimeTo(this.afterEndTime);
-        await this.crowdsale.send(smallAmt, {from: investor}).should.be.rejectedWith(EVMRevert);
+        await this.crowdsale.sendTransaction({value: smallAmt, from: investor}).should.be.rejectedWith(EVMRevert);
         await this.crowdsale.buyTokens(investor, {value: smallAmt, from: purchaser}).should.be.rejectedWith(EVMRevert);
       });
 
@@ -267,21 +265,21 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
         await increaseTimeTo(this.startTime);
         let hasClosed = await this.crowdsale.hasClosed();
         hasClosed.should.equal(false);
-        await this.crowdsale.send(toWei(50000), {from: investor});
+        await this.crowdsale.sendTransaction({value: toWei(50000), from: investor});
         hasClosed = await this.crowdsale.hasClosed();
         hasClosed.should.equal(false);
       });
   
       it('should not be ended if just under cap', async function () {
         await increaseTimeTo(this.startTime);
-        await this.crowdsale.send(toWei(54166), {from: investor});
+        await this.crowdsale.sendTransaction({value: toWei(54166), from: investor});
         let hasClosed = await this.crowdsale.hasClosed();
         hasClosed.should.equal(false);
       });
   
       it('should be ended if cap reached', async function () {
         await increaseTimeTo(this.startTime + duration.days(6));
-        await this.crowdsale.send(toWei(65000), {from: investor});
+        await this.crowdsale.sendTransaction({value: toWei(65000), from: investor});
         let hasClosed = await this.crowdsale.hasClosed();
         hasClosed.should.equal(true);
       });
