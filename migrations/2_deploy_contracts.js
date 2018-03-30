@@ -7,8 +7,8 @@ const multiSigWalletMofN = 2;
 
 const tokenEthRate = new web3.BigNumber(3000);
 
-const tokenTotalSupply = 300000000; // 3 hundred million
-const tokenSaleTokens = toWei(195000000);
+const tokenTotalSupply = 200000000; // 3 hundred million
+const tokenSaleTokens = toWei(130000000);
 
 const goalInEth = 5000;
 const goalInWei = toWei(goalInEth);
@@ -17,17 +17,31 @@ const timelockUntil = 1562025599; // Jun 31, 2019 - 23:59:59 GMT
 
 async function performMigration(deployer, network) {
   
-  if (network == "develop" || // Truffle develop
+  if (network == "development" || // Truffle develop
       network == "coverage")
   {
     // Test wallet addresses (replace with your local Ganache/TestRPC/... accounts for testing)
-    const contrib1 = "0xf17f52151EbEF6C7334FAD080c5704D77216b732";
-    const contrib2 = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef";
+    const contrib1 = "0x00eFA85bd0De109420073B66bFA7511869E883F4";
+    const contrib2 = "0x009EDF9B153FC82b0945dF55499FfcEa0DE959F8";
 
-    const founder1 = "0x821aEa9a577a9b44299B9c15c88cf3087F3b5544";
-    const founder2 = "0x0d1d4e623D10F9FBA5Db95830F7d3839406C6AF2";
-    const founder3 = "0x2932b7A2355D6fecc4b5c0B6BD44cC31df247a2e";
+    const founder1 = "0x00fF840777cb9819f4b0E2bE6d14Dd23AFbC9302";
+    const founder2 = "0x0043C515e8469cc3eCad179DE85BF87b8253e81d";
+    const founder3 = "0x00c804C84f0D9F554ac776E02482DE8056240ad5";
 
+    const whitelister = "0x00a329c0648769A73afAc7F9381E08FB43dBEA72";
+
+  } else if (network == "kovan") {
+
+    const contrib1 = "0x000Ec481D3F6e7D7d36aEa84db84EC8De1E71Fb9";
+    const contrib2 = "0xD83E198C95bb4a325030c1DD393F2F80D6E7e8E8";
+
+    const founder1 = "0x00fF840777cb9819f4b0E2bE6d14Dd23AFbC9302";
+    const founder2 = "0x0043C515e8469cc3eCad179DE85BF87b8253e81d";
+    const founder3 = "0x00c804C84f0D9F554ac776E02482DE8056240ad5";
+
+    const whitelister = "0xD83E198C95bb4a325030c1DD393F2F80D6E7e8E8";
+  
+  
     const founders = [ founder1, founder2, founder3 ];
 
     const team = [ founder1, founder2, founder3, contrib1, contrib2 ];
@@ -37,7 +51,7 @@ async function performMigration(deployer, network) {
     const startTime = web3.toBigNumber(timestamp  + 120);
     const endTime = web3.toBigNumber(timestamp + 2592000);
 
-    const salePeriods = [1523836799, 1525046399, 1526255999, 1527465599];
+    const salePeriods = [1525132800, 1526256000, 1527465600, 1528070400, 1528675200];
 
     var tokenSaleInstance, tokenAddress, unsoldVaultInstance, teamVaultInstances;
 
@@ -57,7 +71,8 @@ async function performMigration(deployer, network) {
       
       // Deploy Token sale contract
       return TokenSale.new(
-        startTime,
+	whitelister,
+	startTime,
         endTime,
         tokenEthRate,
         goalInWei,
