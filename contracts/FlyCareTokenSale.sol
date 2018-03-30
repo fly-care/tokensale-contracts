@@ -33,6 +33,9 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
     mapping (address => TeamMember) public teamMembers;  // founders & contributors vaults (beneficiary,vault) + Org's multisig
     address public whitelister;
 
+    // Events
+    event AddToWhitelist(_beneficiary);
+
     function FlyCareTokenSale (
         address _whitelister,
         uint256 _startTime,
@@ -137,6 +140,7 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
      */
     function addToWhitelist(address _beneficiary) external onlyWhitelister {
         whitelist[_beneficiary] = true;
+        emit AddToWhitelist(_beneficiary);
     }
 
     /**
@@ -146,6 +150,7 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
     function addManyToWhitelist(address[] _beneficiaries) external onlyWhitelister {
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
             whitelist[_beneficiaries[i]] = true;
+            emit AddToWhitelist(_beneficiaries[i]);
         }
     }
 
