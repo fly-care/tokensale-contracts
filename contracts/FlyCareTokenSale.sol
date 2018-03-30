@@ -49,6 +49,7 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
       RefundableCrowdsale(_goal)
     {
         require(_goal.mul(_rate) <= _cap);
+        require(_whitelister != address(0));
 
         for (uint8 i = 0; i < _salePeriods.length; i++) {
             require(_salePeriods[i] > 0);
@@ -117,7 +118,8 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
      * @param _newWhitelister address of the new whitelister
      */
 
-    function setWhitelisterAddress(address _newWhitelister) external onlyOwner {
+    function setWhitelisterAddress(address _whitelister) external onlyOwner {
+        require(_whitelister != address(0));
         whitelister = _newWhitelister;
     }
 
