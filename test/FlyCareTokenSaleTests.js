@@ -19,13 +19,14 @@ var FlyCareTokenSale = artifacts.require("./FlyCareTokenSale.sol");
 var ERC20Basic = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC20Basic.sol");
 var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/TokenTimelock.sol");
 
- contract('FlyCareTokenSale', function ([owner,
+ contract('FlyCareTokenSale', function ([owner, whitelister,
    founder1, founder2, founder3, contrib1, contrib2,
    wallet, purchaser, investor, thirdparty]) {
 
     const founders = [founder1, founder2, founder3];
     const contribs = [contrib1, contrib2];
     const team = [founder1, founder2, founder3, contrib1, contrib2];
+    const whitelisterAddress = whitelister;
 
     const shareDiv = 200;
 
@@ -62,6 +63,7 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
         this.startTime + duration.days(5)];
 
       this.crowdsale = await FlyCareTokenSale.new(
+        whitelisterAddress,
         this.startTime, this.endTime,
         rate, goal, cap, wallet, this.salePeriods,
         {from: owner, gas: 6000000 }
@@ -71,7 +73,7 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
       this.token = FlyCareToken.at(this.tokenAddr);
 
       // Add investor to whitelist
-      await this.crowdsale.addToWhitelist(investor);
+      await this.crowdsale.addToWhitelist(investor, {from: whitelisterAddress});
     });
 
     context('before sale', function() {
@@ -87,15 +89,15 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
       });
 
       it('should fail with zero goal', async function () {
-        await FlyCareTokenSale.new(this.startTime, this.endTime, rate, 0, cap, wallet, this.salePeriods, {from: owner}).should.be.rejectedWith(EVMRevert);
+        await FlyCareTokenSale.new(whitelisterAddress, this.startTime, this.endTime, rate, 0, cap, wallet, this.salePeriods, {from: owner}).should.be.rejectedWith(EVMRevert);
       });
 
       it('should fail with zero cap', async function () {
-        await FlyCareTokenSale.new(this.startTime, this.endTime, rate, goal, 0, wallet, this.salePeriods, {from: owner}).should.be.rejectedWith(EVMRevert);
+        await FlyCareTokenSale.new(whitelisterAddress, this.startTime, this.endTime, rate, goal, 0, wallet, this.salePeriods, {from: owner}).should.be.rejectedWith(EVMRevert);
       });
 
       it('should fail with goal more than cap', async function () {
-        await FlyCareTokenSale.new(this.startTime, this.endTime, rate, moreThanCap, cap, wallet, this.salePeriods, {from: owner}).should.be.rejectedWith(EVMRevert);
+        await FlyCareTokenSale.new(whitelisterAddress, this.startTime, this.endTime, rate, moreThanCap, cap, wallet, this.salePeriods, {from: owner}).should.be.rejectedWith(EVMRevert);
       });
 
       it('should pause the token', async function() {
@@ -119,7 +121,7 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
 
       it('should reject payments after start if not whitelisted', async function () {
         // Remove investor from whitelist
-        await this.crowdsale.removeFromWhitelist(investor);
+        await this.crowdsale.removeFromWhitelist(investor, {from: whitelisterAddress});
 
         await this.crowdsale.sendTransaction({value: smallAmt, from: investor}).should.be.rejectedWith(EVMRevert);
         await this.crowdsale.buyTokens(investor, {value: smallAmt, from: purchaser}).should.be.rejectedWith(EVMRevert);

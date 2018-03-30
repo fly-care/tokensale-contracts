@@ -31,8 +31,10 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
 
     // Public
     mapping (address => TeamMember) public teamMembers;  // founders & contributors vaults (beneficiary,vault) + Org's multisig
+    address public whitelister;
 
     function FlyCareTokenSale (
+        address _whitelister,
         uint256 _startTime,
         uint256 _endTime,
         uint256 _rate,
@@ -47,11 +49,13 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
       RefundableCrowdsale(_goal)
     {
         require(_goal.mul(_rate) <= _cap);
+        require(_whitelister != address(0));
 
         for (uint8 i = 0; i < _salePeriods.length; i++) {
             require(_salePeriods[i] > 0);
         }
         salePeriods = _salePeriods;
+        whitelister = _whitelister;
     }
 
     /**
@@ -103,6 +107,56 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
     function hasClosed() public view returns (bool) {
         return tokenCapReached() || super.hasClosed();
     }
+
+
+    /*******************************************
+     * Whitelisting related functions*
+     *******************************************/
+
+    /**
+     * @dev Change whitelister address to another one if provided by owner
+     * @param _newWhitelister address of the new whitelister
+     */
+
+    function setWhitelisterAddress(address _whitelister) external onlyOwner {
+        require(_whitelister != address(0));
+        whitelister = _newWhitelister;
+    }
+
+    /**
+     * @dev Modifier for address whith whitelisting rights
+    */
+    modifier onlyWhitelister(){
+	require(msg.sender == whitelister);
+        _;
+    }
+
+    /**
+     * @dev Overrides addToWhitelist from WhitelistedCrowdsale to use a dedicated address instead of Owner
+     * @param _beneficiary Address to be added to the whitelist
+     */
+    function addToWhitelist(address _beneficiary) external onlyWhitelister {
+        whitelist[_beneficiary] = true;
+    }
+
+    /**
+     * @dev Overrides addToWhitelist from WhitelistedCrowdsale to use a dedicated address instead of Owner
+     * @param _beneficiaries Addresses to be added to the whitelist
+     */
+    function addManyToWhitelist(address[] _beneficiaries) external onlyWhitelister {
+        for (uint256 i = 0; i < _beneficiaries.length; i++) {
+            whitelist[_beneficiaries[i]] = true;
+        }
+    }
+
+    /**
+     * @dev Overrides addToWhitelist from WhitelistedCrowdsale to use a dedicated address instead of Owner
+     * @param _beneficiary Address to be removed to the whitelist
+     */
+    function removeFromWhitelist(address _beneficiary) external onlyWhitelister {
+        whitelist[_beneficiary] = false;
+    }
+
 
     function setTeamVault(address _wallet, address _vault, uint64 _shareDiv) onlyOwner public returns (bool) {
         require(now < openingTime); // Only before sale starts !
