@@ -12,10 +12,10 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
     using SafeMath for uint256;
 
     // Constants
-    uint256 constant public RESERVE_AMOUNT = 105000000 * 10**18; // 105M FCC
-    // MAX_TEAM_AMOUNT = 75000000
-    // PreSale CAP : 75000000
-    // MainSale CAP : 120000000
+    uint256 constant public RESERVE_AMOUNT = 50000000 * 10**18; // 50M FCC
+    // MAX_TEAM_AMOUNT = 20000000
+    // PreSale CAP : 32500000
+    // MainSale CAP : 97500000
 
     // Data types
     struct TeamMember {
@@ -41,7 +41,7 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
         uint256 _goal,
         uint256 _cap,
         address _wallet,
-        uint64[4] _salePeriods
+        uint64[5] _salePeriods
       ) public
       Crowdsale(_rate, _wallet, new FlyCareToken())
       TokenCappedCrowdsale(_cap)
@@ -72,21 +72,24 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
     function getCurrentRate() public view returns (uint256) {
         uint256 time = now;
         if (time <= salePeriods[0]) {
-            return 3600;
+            return 1875;
         }
         
         if (time <= salePeriods[1]) {
-            return 3450;
+            return 1765;
         }
 
         if (time <= salePeriods[2]) {
-            return 3300;
+            return 1667;
         }
 
         if (time <= salePeriods[3]) {
-            return 3150;
+            return 1579;
         }
 
+        if (time <= salePeriods[4]) {
+            return 1500;
+        }
         return rate;
     }
 
