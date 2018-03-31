@@ -11,16 +11,24 @@ import "zeppelin-solidity/contracts/crowdsale/Crowdsale.sol";
 contract TokenCappedCrowdsale is Crowdsale {
     using SafeMath for uint256;
 
-    uint256 public tokenCap;
     uint256 public tokenSold;
+    uint256 public tokenPresaleCap;
+    uint256 public tokenPresaleSold;
+    uint256 public saleStartTime;
+    uint256 public totalTokenSaleCap;
 
     /**
-     * @dev Constructor, takes maximum number of tokens to be minted by the crowdsale.
-     * @param _tokenCap Max number of tokens to be minted
+     * @dev Constructor, takes presal cap, maximum number of tokens to be minted by the crowdsale and start date of regular sale period.
+     * @param _tokenPresaleCap Max number of tokens to be sold during presale
+     * @param _totalTokenSaleCap Max number of tokens to be minted
+     * @param _saleStartTime Start date of the sale period
      */
-    function TokenCappedCrowdsale(uint256 _tokenCap) public {
-      require(_tokenCap > 0);
-      tokenCap = _tokenCap;
+    function TokenCappedCrowdsale(uint256 _tokenPresaleCap, uint256 _totalTokenSaleCap, uint256 _saleStartTime) public {
+      require(_tokenPresaleCap > 0);
+      require(_totalTokenSaleCap > 0);
+      tokenPresaleCap = _tokenPresaleCap;
+      saleStartTime = _saleStartTime;
+      totalTokenSaleCap = _totalTokenSaleCap;
     }
 
     /**
@@ -28,7 +36,7 @@ contract TokenCappedCrowdsale is Crowdsale {
      * @return Whether the cap was reached
      */
     function tokenCapReached() public view returns (bool) {
-      return tokenSold >= tokenCap;
+      return tokenSold >= totalTokenSaleCap;
     }
 
     /**
@@ -40,7 +48,13 @@ contract TokenCappedCrowdsale is Crowdsale {
         super._preValidatePurchase(_beneficiary, _weiAmount);
         // calculate token amount to be created
         uint256 tokenAmount = _getTokenAmount(_weiAmount);
-        require(tokenSold.add(tokenAmount) <= tokenCap);
+        // Enforce presale cap before the begining of the sale
+	if (block.timestamp < saleStartTime) {
+            require(tokenPresaleSold.add(tokenAmount) <= tokenPresaleCap);
+        } else {
+        // Enfore total (presale + sale) token cap once the sale has started
+            require(tokenSold.add(tokenAmount) <= totalTokenSaleCap);
+        }
     }
 
     /**
@@ -51,7 +65,12 @@ contract TokenCappedCrowdsale is Crowdsale {
     function _processPurchase(address _beneficiary, uint256 _tokenAmount) internal {
         super._processPurchase(_beneficiary, _tokenAmount);
         // update state
+        // Keep track of all token sold in tokenSold
         tokenSold = tokenSold.add(_tokenAmount);
+        // During presale only, keep track of token sold in tokenPresaleSold
+        if (block.timestamp < saleStartTime) {
+            tokenPresaleSold = tokenPresaleSold.add(_tokenAmount);
+        }
     }
 
 }

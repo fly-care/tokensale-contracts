@@ -17,34 +17,43 @@ const should = require('chai')
 var FlyCareToken = artifacts.require("./FlyCareToken.sol");
 var FlyCareTokenSale = artifacts.require("./FlyCareTokenSale.sol");
 var ERC20Basic = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC20Basic.sol");
-var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/TokenTimelock.sol");
 
  contract('FlyCareTokenSale', function ([owner, whitelister,
-   founder1, founder2, founder3, contrib1, contrib2,
    wallet, purchaser, investor, thirdparty]) {
 
-    const founders = [founder1, founder2, founder3];
-    const contribs = [contrib1, contrib2];
-    const team = [founder1, founder2, founder3, contrib1, contrib2];
     const whitelisterAddress = whitelister;
 
     const shareDiv = 200;
 
-    const rate = new BigNumber(3000);
-    const deals = [3600,3450,3300,3150];
-    const goal = toWei(5000); // in ETH
+    const rate = new BigNumber(1500);
+    const deals = [1875, 1765, 1667, 1579, 1500];
+
+    // Amounts in ETH
+    const goalETH = 5000;
+    const goal = toWei(goalETH); // in ETH
+    const moreThanGoal = toWei(goalETH + 1);
+    const lessThanGoal = toWei(goalETH -1);
     const smallAmt = toWei(1);
     const bigAmt = toWei(42);
+    // Computed for deals = [1875, 1765, 1667, 1579, 1500]
+    const ETHLessThanPresaleCap = toWei(17300); // Valid during sale period 1
+    const ETHMoreThanPresaleCap = toWei(17500); // Valid during sale period 1
+    const ETHLessThanCap = toWei(86600); // Valid during sale period 5
+    const ETHMoreThanCap = toWei(86700); // Valid during sale period 5
 
-    const cap = toWei(195000000); // in STAMPS
-    const moreThanCap = toWei(195000000 + 1);
-    const lessThanCap = toWei(100000000);
-    const lessThanGoal = toWei(2000000);
+    // Amounts in FCC
+    const presaleCap = toWei(32500000); // in FCC
+    const totalTokenSaleCap = toWei(130000000); // in FCC
+    const moreThanPresaleCap = toWei(32500000 + 1);
+    const moreThanCap = totalTokenSaleCap + 1;
+    const lessThanPresaleCap = presaleCap - 1;
+    const lessThanCap = totalTokenSaleCap - 1;
   
-    const smallAmtTokens = smallAmt.mul(deals[0]);
-    const BigAmtTokens = bigAmt.mul(deals[0]);
-
-    const timelockUntil = latestTime() + duration.weeks(2) + duration.years(1);
+    const smallAmtTokensPresale = smallAmt.mul(deals[0]);
+    const smallAmtTokensSale = smallAmt.mul(deals[4]);
+    const BigAmtTokensPresale = bigAmt.mul(deals[0]);
+    const BigAmtTokensSale = bigAmt.mul(deals[4]);
+    
 
     before(async function() {
         //Advance to the next block to correctly read time in the solidity "now" function interpreted by testrpc
@@ -60,12 +69,14 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
         this.startTime + duration.days(1),
         this.startTime + duration.days(2),
         this.startTime + duration.days(3),
-        this.startTime + duration.days(5)];
+        this.startTime + duration.days(4),
+        this.startTime + duration.days(5),
+      ];
 
       this.crowdsale = await FlyCareTokenSale.new(
         whitelisterAddress,
         this.startTime, this.endTime,
-        rate, goal, cap, wallet, this.salePeriods,
+        rate, goal, presaleCap, totalTokenSaleCap, wallet, this.salePeriods,
         {from: owner, gas: 6000000 }
       );
       
@@ -89,15 +100,19 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
       });
 
       it('should fail with zero goal', async function () {
-        await FlyCareTokenSale.new(whitelisterAddress, this.startTime, this.endTime, rate, 0, cap, wallet, this.salePeriods, {from: owner}).should.be.rejectedWith(EVMRevert);
+        await FlyCareTokenSale.new(whitelisterAddress, this.startTime, this.endTime, rate, 0, presaleCap, totalTokenSaleCap, wallet, this.salePeriods, {from: owner}).should.be.rejectedWith(EVMRevert);
       });
 
-      it('should fail with zero cap', async function () {
-        await FlyCareTokenSale.new(whitelisterAddress, this.startTime, this.endTime, rate, goal, 0, wallet, this.salePeriods, {from: owner}).should.be.rejectedWith(EVMRevert);
+      it('should fail with zero total cap', async function () {
+        await FlyCareTokenSale.new(whitelisterAddress, this.startTime, this.endTime, rate, goal, presaleCap, 0, wallet, this.salePeriods, {from: owner}).should.be.rejectedWith(EVMRevert);
       });
 
-      it('should fail with goal more than cap', async function () {
-        await FlyCareTokenSale.new(whitelisterAddress, this.startTime, this.endTime, rate, moreThanCap, cap, wallet, this.salePeriods, {from: owner}).should.be.rejectedWith(EVMRevert);
+      it('shoulSupplyMintedzero presale cap', async function () {
+        await FlyCareTokenSale.new(whitelisterAddress, this.startTime, this.endTime, rate, goal, 0, totalTokenSaleCap, wallet, this.salePeriods, {from: owner}).should.be.rejectedWith(EVMRevert);
+      });
+
+      it('should fail with goal more than total cap', async function () {
+        await FlyCareTokenSale.new(whitelisterAddress, this.startTime, this.endTime, rate, ETHMoreThanCap, presaleCap, totalTokenSaleCap, wallet, this.salePeriods, {from: owner}).should.be.rejectedWith(EVMRevert);
       });
 
       it('should pause the token', async function() {
@@ -108,7 +123,8 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
 
     });
 
-    context('during sale', function() {
+
+    context('during presale', function() {
 
       beforeEach(async function() {
         await increaseTimeTo(this.startTime + duration.minutes(2));
@@ -139,19 +155,19 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
         event.args.purchaser.should.equal(investor);
         event.args.beneficiary.should.equal(investor);
         event.args.value.should.be.bignumber.equal(smallAmt);
-        event.args.amount.should.be.bignumber.equal(smallAmtTokens);
+        event.args.amount.should.be.bignumber.equal(smallAmtTokensPresale);
       });
 
       it('should increase totalSupply', async function () {
         await this.crowdsale.sendTransaction({value: smallAmt, from: investor});
         const totalSupply = await this.token.totalSupply();
-        totalSupply.should.be.bignumber.equal(smallAmtTokens);
+        totalSupply.should.be.bignumber.equal(smallAmtTokensPresale);
       });
   
       it('should assign tokens to sender', async function () {
         await this.crowdsale.sendTransaction({value: smallAmt, from: investor});
         let balance = await this.token.balanceOf(investor);
-        balance.should.be.bignumber.equal(smallAmtTokens);
+        balance.should.be.bignumber.equal(smallAmtTokensPresale);
       });
   
       it('should not forward funds to wallet before end', async function () {
@@ -165,18 +181,101 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
         await this.crowdsale.claimRefund({from: investor}).should.be.rejectedWith(EVMRevert);
       });
 
-      it('should accept payments within cap', async function () {
-        await this.crowdsale.sendTransaction({value: toWei(54000), from: investor}).should.be.fulfilled;
-        await this.crowdsale.sendTransaction({value: toWei(166), from: investor}).should.be.fulfilled;
+      it('should accept payments within presale cap', async function () {
+        await this.crowdsale.sendTransaction({value: ETHLessThanPresaleCap, from: investor}).should.be.fulfilled;
+        await this.crowdsale.sendTransaction({value: toWei(1), from: investor}).should.be.fulfilled;
+      });
+  
+      it('should reject payments outside presale cap', async function () {
+        await this.crowdsale.sendTransaction({value: ETHLessThanPresaleCap, from: investor});
+        await this.crowdsale.sendTransaction({value: toWei(100), from: investor}).should.be.rejectedWith(EVMRevert);
+      });
+  
+      it('should reject payments that exceed presale cap', async function () {
+        await this.crowdsale.sendTransaction({value: ETHMoreThanPresaleCap, from: investor}).should.be.rejectedWith(EVMRevert);
+      });
+
+      it('cannot be finalized before ending', async function () {
+        await this.crowdsale.finalize({from: owner}).should.be.rejectedWith(EVMRevert);
+      });
+
+      it('should pause the token', async function() {
+        let paused = await this.token.paused();
+    
+        assert.equal(paused, true);
+      });
+
+    });
+
+    context('during sale', function() {
+
+      beforeEach(async function() {
+        await increaseTimeTo(this.startTime + duration.days(5) + duration.minutes(2));
+      });
+
+      it('should accept payments after start if whitelisted', async function () {
+        await this.crowdsale.sendTransaction({value: smallAmt, from: investor}).should.be.fulfilled;
+        await this.crowdsale.buyTokens(investor, {value: smallAmt, from: purchaser}).should.be.fulfilled;
+      });
+
+      it('should reject payments after start if not whitelisted', async function () {
+        // Remove investor from whitelist
+        await this.crowdsale.removeFromWhitelist(investor, {from: whitelisterAddress});
+
+        await this.crowdsale.sendTransaction({value: smallAmt, from: investor}).should.be.rejectedWith(EVMRevert);
+        await this.crowdsale.buyTokens(investor, {value: smallAmt, from: purchaser}).should.be.rejectedWith(EVMRevert);
+
+        // Also try with owner just to prove the point
+        await this.crowdsale.send(smallAmt).should.be.rejectedWith(EVMRevert);
+      });
+
+      it('should log purchase', async function () {
+        const {logs} = await this.crowdsale.sendTransaction({value: smallAmt, from: investor});
+
+        const event = logs.find(e => e.event === 'TokenPurchase');
+
+        should.exist(event);
+        event.args.purchaser.should.equal(investor);
+        event.args.beneficiary.should.equal(investor);
+        event.args.value.should.be.bignumber.equal(smallAmt);
+        event.args.amount.should.be.bignumber.equal(smallAmtTokensSale);
+      });
+
+      it('should increase totalSupply', async function () {
+        await this.crowdsale.sendTransaction({value: smallAmt, from: investor});
+        const totalSupply = await this.token.totalSupply();
+        totalSupply.should.be.bignumber.equal(smallAmtTokensSale);
+      });
+  
+      it('should assign tokens to sender', async function () {
+        await this.crowdsale.sendTransaction({value: smallAmt, from: investor});
+        let balance = await this.token.balanceOf(investor);
+        balance.should.be.bignumber.equal(smallAmtTokensSale);
+      });
+  
+      it('should not forward funds to wallet before end', async function () {
+        const pre = web3.eth.getBalance(wallet);
+        await this.crowdsale.sendTransaction({value: smallAmt, from: investor});
+        const post = web3.eth.getBalance(wallet);
+        post.should.be.bignumber.equal(pre);
+      });
+
+      it('should deny refunds before end', async function () {
+        await this.crowdsale.claimRefund({from: investor}).should.be.rejectedWith(EVMRevert);
+      });
+
+      it('should accept payments within total cap', async function () {
+        await this.crowdsale.sendTransaction({value: ETHLessThanCap, from: investor}).should.be.fulfilled;
+        await this.crowdsale.sendTransaction({value: toWei(1), from: investor}).should.be.fulfilled;
       });
   
       it('should reject payments outside cap', async function () {
-        await this.crowdsale.sendTransaction({value: toWei(54166), from: investor});
-        await this.crowdsale.sendTransaction({value: toWei(1), from: investor}).should.be.rejectedWith(EVMRevert);
+        await this.crowdsale.sendTransaction({value: ETHLessThanCap, from: investor});
+        await this.crowdsale.sendTransaction({value: toWei(200), from: investor}).should.be.rejectedWith(EVMRevert);
       });
   
       it('should reject payments that exceed cap', async function () {
-        await this.crowdsale.sendTransaction({value: toWei(54167), from: investor}).should.be.rejectedWith(EVMRevert);
+        await this.crowdsale.sendTransaction({value: ETHMoreThanCap, from: investor}).should.be.rejectedWith(EVMRevert);
       });
 
       it('cannot be finalized before ending', async function () {
@@ -239,16 +338,16 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
 
       it('should allow refunds after end if goal was not reached', async function () {
         await increaseTimeTo(this.startTime);
-        await this.crowdsale.sendTransaction({value: toWei(267), from: investor});
+        const pre = web3.eth.getBalance(investor);
+        await this.crowdsale.sendTransaction({value: lessThanGoal, from: investor, gasPrice: 0});
         await increaseTimeTo(this.afterEndTime);
     
         await this.crowdsale.finalize({from: owner});
     
-        const pre = web3.eth.getBalance(investor);
         await this.crowdsale.claimRefund({from: investor, gasPrice: 0}).should.be.fulfilled;
         const post = web3.eth.getBalance(investor);
     
-        post.minus(pre).should.be.bignumber.equal(toWei(267));
+        post.should.be.bignumber.equal(pre);
       });
 
       it('should forward funds to wallet after end if goal was reached', async function () {
@@ -264,27 +363,21 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
       });
 
       it('should not be ended if under cap', async function () {
-        await increaseTimeTo(this.startTime);
+        await increaseTimeTo(this.startTime + duration.days(5) + duration.minutes(2));
         let hasClosed = await this.crowdsale.hasClosed();
         hasClosed.should.equal(false);
-        await this.crowdsale.sendTransaction({value: toWei(50000), from: investor});
+        await this.crowdsale.sendTransaction({value: ETHLessThanCap, from: investor});
         hasClosed = await this.crowdsale.hasClosed();
         hasClosed.should.equal(false);
       });
   
-      it('should not be ended if just under cap', async function () {
-        await increaseTimeTo(this.startTime);
-        await this.crowdsale.sendTransaction({value: toWei(54166), from: investor});
-        let hasClosed = await this.crowdsale.hasClosed();
-        hasClosed.should.equal(false);
-      });
-  
+      /*
       it('should be ended if cap reached', async function () {
-        await increaseTimeTo(this.startTime + duration.days(6));
-        await this.crowdsale.sendTransaction({value: toWei(65000), from: investor});
+        await increaseTimeTo(this.startTime);
+        await this.crowdsale.sendTransaction({value: , from: investor});
         let hasClosed = await this.crowdsale.hasClosed();
         hasClosed.should.equal(true);
-      });
+      }); */
 
       it('cannot be finalized by third party after ending', async function () {
         await increaseTimeTo(this.afterEndTime);
@@ -320,22 +413,6 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
 
     context('sale finalization w/ goal reached', function() {
 
-      beforeEach(async function() {
-        // Team member vaults
-        for (var i=0; i < team.length; i++) {
-          var memberWallet = team[i];
-  
-          var teamVault = await TimelockVault.new(
-            this.tokenAddr,
-            memberWallet,
-            timelockUntil
-          );
-          
-          var memberTokenShare = shareDiv;
-          await this.crowdsale.setTeamVault(memberWallet, teamVault.address, memberTokenShare, {from: owner});
-        };
-      });
-
       it('should burn unsold tokens if cap not reached', async function () {
         await increaseTimeTo(this.startTime);
         await this.crowdsale.sendTransaction({value: goal, from: investor});
@@ -346,77 +423,14 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
         const saleBalance = await this.token.balanceOf(this.crowdsale.address);
         saleBalance.should.be.bignumber.equal(0);
 
-        // Total Supply should be = sold tokens (= goal * deal 1 in this case) + Reserve amount
-        const expectedSupply = toWei(123000000);
+        // Total Supply should be tokenSold + reserve amount
+	var tokenSold = await this.crowdsale.tokenSold();
+        var reserve = await this.crowdsale.RESERVE_AMOUNT();
         const totalSupply = await this.token.totalSupply();
-        totalSupply.should.be.bignumber.equal(expectedSupply);
+        totalSupply.should.be.bignumber.equal(tokenSold.add(reserve));
       });
 
-      it('should transfer founders token share to 12-month timelock vault', async function () {
-        await increaseTimeTo(this.startTime);
-        await this.crowdsale.sendTransaction({value: goal, from: investor})
-        await increaseTimeTo(this.afterEndTime);
-
-        await this.crowdsale.finalize({from: owner});
-
-        for (var i = 0; i < founders.length; i++)
-        {
-          const founder = founders[i];
-
-          const founderVaultAddr = await this.crowdsale.getTeamVault(founder);
-          founderVaultAddr.should.not.equal(0x0);
-  
-          const founderVault = TimelockVault.at(founderVaultAddr);
-          should.exist(founderVault);
-          
-          const vaultBeneficiary = await founderVault.beneficiary();
-          vaultBeneficiary.should.equal(founder);
-  
-          const vaultToken = ERC20Basic.at(await founderVault.token());
-          vaultToken.address.should.equal(this.token.address);
-  
-          const vaultReleaseTime = await founderVault.releaseTime();
-          vaultReleaseTime.should.be.bignumber.equal(timelockUntil);
-          
-          const expectedBalance = web3.fromWei(goal.mul(deals[0]).dividedBy(shareDiv)).round(5);
-          const vaultBalance = web3.fromWei(await this.token.balanceOf(founderVaultAddr)).round(5);
-          vaultBalance.should.be.bignumber.equal(expectedBalance);
-        }
-      });
-
-      it('should transfer contributors token share to 12-month timelock vault', async function () {
-        await increaseTimeTo(this.startTime);
-        await this.crowdsale.sendTransaction({value: goal, from: investor})
-        await increaseTimeTo(this.afterEndTime);
-
-        await this.crowdsale.finalize({from: owner});
-
-        for (var i = 0; i < contribs.length; i++)
-        {
-          const contrib = contribs[i];
-
-          const contribVaultAddr = await this.crowdsale.getTeamVault(contrib);
-          contribVaultAddr.should.not.equal(0x0);
-  
-          const contribVault = TimelockVault.at(contribVaultAddr);
-          should.exist(contribVault);
-          
-          const vaultBeneficiary = await contribVault.beneficiary();
-          vaultBeneficiary.should.equal(contrib);
-  
-          const vaultToken = ERC20Basic.at(await contribVault.token());
-          vaultToken.address.should.equal(this.token.address);
-  
-          const vaultReleaseTime = await contribVault.releaseTime();
-          vaultReleaseTime.should.be.bignumber.equal(timelockUntil);
-          
-          const expectedBalance = web3.fromWei(goal.mul(deals[0]).dividedBy(shareDiv)).round(5);
-          const vaultBalance = web3.fromWei(await this.token.balanceOf(contribVaultAddr)).round(5);
-          vaultBalance.should.be.bignumber.equal(expectedBalance);
-        }
-      });
-
-      it('should transfer reserved tokens to org wallet (minus founders & contributors shares)', async function () {
+      it('should transfer reserved tokens to org wallet', async function () {
         await increaseTimeTo(this.startTime);
         await this.crowdsale.sendTransaction({value: goal, from: investor})
         await increaseTimeTo(this.afterEndTime);
@@ -424,13 +438,10 @@ var TimelockVault = artifacts.require("zeppelin-solidity/contracts/token/ERC20/T
         await this.crowdsale.finalize({from: owner});
 
         const soldTokens = goal.mul(deals[0]);
-        const founderShares = soldTokens.dividedBy(shareDiv).times(founders.length);
-        const contributorShares = soldTokens.dividedBy(shareDiv).times(contribs.length);
 
         var reserve = await this.crowdsale.RESERVE_AMOUNT();
-        reserve = web3.fromWei(reserve.minus(founderShares).minus(contributorShares)).round(5);
 
-        const balance = web3.fromWei(await this.token.balanceOf(wallet)).round(5);
+        const balance = await this.token.balanceOf(wallet);
         balance.should.be.bignumber.equal(reserve);
       });
 

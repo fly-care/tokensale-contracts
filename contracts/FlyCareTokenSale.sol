@@ -12,29 +12,19 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
     using SafeMath for uint256;
 
     // Constants
-    uint256 constant public RESERVE_AMOUNT = 50000000 * 10**18; // 50M FCC
+    uint256 constant public RESERVE_AMOUNT = 70000000 * 10**18; // 50M FCC reserve + 20M FCC team and advisors
     // MAX_TEAM_AMOUNT = 20000000
     // PreSale CAP : 32500000
     // MainSale CAP : 97500000
 
-    // Data types
-    struct TeamMember {
-        address wallet; // Address of team member's wallet
-        address vault;   // Address of token timelock vault
-        uint64 shareDiv; // Divisor to be used to get member's token share
-    }
-    
     // Private
-    uint64[4] private salePeriods;
-    uint8 private numTeamMembers;
-    mapping (uint => address) private memberLookup;
+    uint64[5] private salePeriods;
 
     // Public
-    mapping (address => TeamMember) public teamMembers;  // founders & contributors vaults (beneficiary,vault) + Org's multisig
     address public whitelister;
 
     // Events
-    event AddToWhitelist(_beneficiary);
+    event AddToWhitelist(address _beneficiary);
 
     function FlyCareTokenSale (
         address _whitelister,
@@ -42,16 +32,17 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
         uint256 _endTime,
         uint256 _rate,
         uint256 _goal,
-        uint256 _cap,
+        uint256 _presaleCap,
+        uint256 _totalTokenSaleCap,
         address _wallet,
         uint64[5] _salePeriods
       ) public
       Crowdsale(_rate, _wallet, new FlyCareToken())
-      TokenCappedCrowdsale(_cap)
+      TokenCappedCrowdsale(_presaleCap, _totalTokenSaleCap, _salePeriods[2])
       TimedCrowdsale(_startTime, _endTime)
       RefundableCrowdsale(_goal)
     {
-        require(_goal.mul(_rate) <= _cap);
+        require(_goal.mul(_rate) <= _totalTokenSaleCap);
         require(_whitelister != address(0));
 
         for (uint8 i = 0; i < _salePeriods.length; i++) {
@@ -121,12 +112,12 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
 
     /**
      * @dev Change whitelister address to another one if provided by owner
-     * @param _newWhitelister address of the new whitelister
+     * @param _whitelister address of the new whitelister
      */
 
     function setWhitelisterAddress(address _whitelister) external onlyOwner {
         require(_whitelister != address(0));
-        whitelister = _newWhitelister;
+        whitelister = _whitelister;
     }
 
     /**
@@ -143,7 +134,7 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
      */
     function addToWhitelist(address _beneficiary) external onlyWhitelister {
         whitelist[_beneficiary] = true;
-        emit AddToWhitelist(_beneficiary);
+        AddToWhitelist(_beneficiary);
     }
 
     /**
@@ -153,7 +144,7 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
     function addManyToWhitelist(address[] _beneficiaries) external onlyWhitelister {
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
             whitelist[_beneficiaries[i]] = true;
-            emit AddToWhitelist(_beneficiaries[i]);
+            AddToWhitelist(_beneficiaries[i]);
         }
     }
 
@@ -165,50 +156,17 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
         whitelist[_beneficiary] = false;
     }
 
-
-    function setTeamVault(address _wallet, address _vault, uint64 _shareDiv) onlyOwner public returns (bool) {
-        require(now < openingTime); // Only before sale starts !
-        require(_wallet != address(0));
-        require(_vault != address(0));
-        require(_shareDiv > 0);
-
-        require(numTeamMembers + 1 < 8);
-
-        memberLookup[numTeamMembers] = _wallet;
-        teamMembers[_wallet] = TeamMember(_wallet, _vault, _shareDiv);
-        numTeamMembers++;
-
-        return true;
-    }
-
-    function getTeamVault(address _wallet) constant public returns (address) {
-        require(_wallet != address(0));
-        return teamMembers[_wallet].vault;
-    }
-
     function finalization() internal {
         if (goalReached()) {
-            bool capReached = tokenSold >= tokenCap;
-            if (!capReached) {
-                uint256 tokenUnsold = tokenCap.sub(tokenSold);
+            if (!tokenCapReached()) {
+                uint256 tokenUnsold = totalTokenSaleCap.sub(tokenSold);
                 // Mint unsold tokens to sale's address & burn them immediately
                 _deliverTokens(this, tokenUnsold);
                 FlyCareToken(token).burn(tokenUnsold);
             }
           
-            uint256 tokenReserved = RESERVE_AMOUNT;
-          
-            for (uint8 i = 0; i < numTeamMembers; i++) {
-                TeamMember memory member = teamMembers[memberLookup[i]];
-                if (member.vault != address(0)) {
-                    var tokenAmount = tokenSold.div(member.shareDiv);
-                    _deliverTokens(member.vault, tokenAmount);
-                    tokenReserved = tokenReserved.sub(tokenAmount);
-                }
-            }
-
             // Allocate remaining reserve to multisig wallet
-            _deliverTokens(wallet, tokenReserved);
+            _deliverTokens(wallet, RESERVE_AMOUNT);
 
             // Finish token minting & unpause transfers
             require(FlyCareToken(token).finishMinting());
