@@ -35,6 +35,8 @@ var ERC20Basic = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC2
     const lessThanGoal = toWei(goalETH -1);
     const smallAmt = toWei(1);
     const bigAmt = toWei(42);
+    const minInvestment = toWei(0.1);
+    const lessThanMinInvestment = toWei(0.09); 
     // Computed for deals = [1875, 1765, 1667, 1579, 1500]
     const ETHLessThanPresaleCap = toWei(17300); // Valid during sale period 1
     const ETHMoreThanPresaleCap = toWei(17500); // Valid during sale period 1
@@ -146,6 +148,16 @@ var ERC20Basic = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC2
         await this.crowdsale.send(smallAmt).should.be.rejectedWith(EVMRevert);
       });
 
+      it('should accept payments equal to the minimum investment', async function () {
+        await this.crowdsale.sendTransaction({value: minInvestment, from: investor}).should.be.fulfilled;
+        await this.crowdsale.buyTokens(investor, {value: minInvestment, from: purchaser}).should.be.fulfilled;
+      });
+
+      it('should reject payments below the minimum investment', async function () {
+        await this.crowdsale.sendTransaction({value: lessThanMinInvestment, from: investor}).should.be.rejectedWith(EVMRevert);
+        await this.crowdsale.buyTokens(investor, {value: lessThanMinInvestment, from: purchaser}).should.be.rejectedWith(EVMRevert);
+      });
+
       it('should log purchase', async function () {
         const {logs} = await this.crowdsale.sendTransaction({value: smallAmt, from: investor});
 
@@ -227,6 +239,16 @@ var ERC20Basic = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC2
 
         // Also try with owner just to prove the point
         await this.crowdsale.send(smallAmt).should.be.rejectedWith(EVMRevert);
+      });
+
+      it('should accept payments equal to the minimum investment', async function () {
+        await this.crowdsale.sendTransaction({value: minInvestment, from: investor}).should.be.fulfilled;
+        await this.crowdsale.buyTokens(investor, {value: minInvestment, from: purchaser}).should.be.fulfilled;
+      });
+
+      it('should reject payments below the minimum investment', async function () {
+        await this.crowdsale.sendTransaction({value: lessThanMinInvestment, from: investor}).should.be.rejectedWith(EVMRevert);
+        await this.crowdsale.buyTokens(investor, {value: lessThanMinInvestment, from: purchaser}).should.be.rejectedWith(EVMRevert);
       });
 
       it('should log purchase', async function () {

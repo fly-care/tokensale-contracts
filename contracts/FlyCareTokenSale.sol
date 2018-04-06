@@ -17,6 +17,8 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
     // PreSale CAP : 32500000
     // MainSale CAP : 97500000
 
+    uint256 constant public MIN_INVESTMENT = 0.1 * 10**18; // 0.1ETH minimal investment
+
     // Private
     uint64[5] private salePeriods;
 
@@ -59,6 +61,7 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
      */
     function _preValidatePurchase(address _beneficiary, uint256 _weiAmount) internal {
         require(!paused);
+        require(_weiAmount >= MIN_INVESTMENT);
         super._preValidatePurchase(_beneficiary, _weiAmount);
     }
 
