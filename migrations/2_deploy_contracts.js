@@ -17,30 +17,49 @@ const timelockUntil = 1562025599; // Jun 31, 2019 - 23:59:59 GMT
 
 async function performMigration(deployer, network) {
   
+  var founder1, founder2, founder3, whitelister; 
+  var startTime, endTime, salePeriods;
+ 
   if (network == "development" || // Truffle develop
       network == "coverage")
   {
     // Test wallet addresses (replace with your local Ganache/TestRPC/... accounts for testing)
-    const founder1 = "0x00fF840777cb9819f4b0E2bE6d14Dd23AFbC9302";
-    const founder2 = "0x0043C515e8469cc3eCad179DE85BF87b8253e81d";
-    const founder3 = "0x00c804C84f0D9F554ac776E02482DE8056240ad5";
+    founder1 = "0x00fF840777cb9819f4b0E2bE6d14Dd23AFbC9302";
+    founder2 = "0x0043C515e8469cc3eCad179DE85BF87b8253e81d";
+    founder3 = "0x00c804C84f0D9F554ac776E02482DE8056240ad5";
 
-    const whitelister = "0x00a329c0648769A73afAc7F9381E08FB43dBEA72";
-
-  } else if (network == "kovan") {
-    const founder1 = "0x00fF840777cb9819f4b0E2bE6d14Dd23AFbC9302";
-    const founder2 = "0x0043C515e8469cc3eCad179DE85BF87b8253e81d";
-    const founder3 = "0x00c804C84f0D9F554ac776E02482DE8056240ad5";
-
-    const whitelister = "0xD83E198C95bb4a325030c1DD393F2F80D6E7e8E8";
-
-    const founders = [ founder1, founder2, founder3 ];
+    whitelister = "0x00a329c0648769A73afAc7F9381E08FB43dBEA72";
 
     const { timestamp } = await web3.eth.getBlock('latest');
-    const startTime = web3.toBigNumber(timestamp  + 120);
-    const endTime = web3.toBigNumber(timestamp + 2592000);
+    startTime = web3.toBigNumber(timestamp  + 120);
+    endTime = web3.toBigNumber(timestamp + 2592000);
+    salePeriods = [startTime + 86400, startTime + (86400 * 2), startTime + (86400 * 3), startTime + (86400 * 4), endTime];
 
-    const salePeriods = [1525132800, 1526256000, 1527465600, 1528070400, 1528675200];
+  } else if (network == "kovan") {
+    founder1 = "0x00fF840777cb9819f4b0E2bE6d14Dd23AFbC9302";
+    founder2 = "0x0043C515e8469cc3eCad179DE85BF87b8253e81d";
+    founder3 = "0x00c804C84f0D9F554ac776E02482DE8056240ad5";
+
+    whitelister = "0xD83E198C95bb4a325030c1DD393F2F80D6E7e8E8";
+
+    const { timestamp } = await web3.eth.getBlock('latest');
+    startTime = web3.toBigNumber(timestamp  + 120);
+    endTime = web3.toBigNumber(startTime + 432000);
+    salePeriods = [startTime + 86400, startTime + (86400 * 2), startTime + (86400 * 3), startTime + (86400 * 4), endTime];
+
+  } else if (network == "mainnet") {
+    founder1 = "";
+    founder2 = "";
+    founder3 = "";
+
+    whitelister = "";
+    startTime = 1525176000;
+    endTime = 1530403199;
+    salePeriods = [1526256000, 1527465600, 1528070400, 1528675200, endTime];
+
+  }
+
+    const founders = [ founder1, founder2, founder3 ];
 
     var multiSigInstance, tokenSaleInstance, tokenAddress, unsoldVaultInstance;
 
@@ -75,7 +94,6 @@ async function performMigration(deployer, network) {
        console.log('token sale address: ' + tokenSaleInstance.address);
        return tokenSaleInstance.token.call();
     });
-  };
   
 };
 
