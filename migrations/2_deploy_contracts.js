@@ -5,10 +5,10 @@ const TimelockVault = artifacts.require('TokenTimelock');
 
 const multiSigWalletMofN = 2;
 
-const tokenEthRate = new web3.BigNumber(3000);
+const tokenEthRate = new web3.BigNumber(1500);
 
-const tokenTotalSupply = 300000000; // 3 hundred million
-const tokenSaleTokens = toWei(195000000);
+const presaleCap = toWei(32500000); // presale cap 32.5M
+const totalTokenSaleCap = toWei(130000000); // total token sale cap 130M
 
 const goalInEth = 5000;
 const goalInWei = toWei(goalInEth);
@@ -17,31 +17,51 @@ const timelockUntil = 1562025599; // Jun 31, 2019 - 23:59:59 GMT
 
 async function performMigration(deployer, network) {
   
-  if (network == "develop" || // Truffle develop
+  var founder1, founder2, founder3, whitelister; 
+  var startTime, endTime, salePeriods;
+ 
+  if (network == "development" || // Truffle develop
       network == "coverage")
   {
     // Test wallet addresses (replace with your local Ganache/TestRPC/... accounts for testing)
-    const contrib1 = "0xf17f52151EbEF6C7334FAD080c5704D77216b732";
-    const contrib2 = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef";
+    founder1 = "0x00fF840777cb9819f4b0E2bE6d14Dd23AFbC9302";
+    founder2 = "0x0043C515e8469cc3eCad179DE85BF87b8253e81d";
+    founder3 = "0x00c804C84f0D9F554ac776E02482DE8056240ad5";
 
-    const founder1 = "0x821aEa9a577a9b44299B9c15c88cf3087F3b5544";
-    const founder2 = "0x0d1d4e623D10F9FBA5Db95830F7d3839406C6AF2";
-    const founder3 = "0x2932b7A2355D6fecc4b5c0B6BD44cC31df247a2e";
+    whitelister = "0x00a329c0648769A73afAc7F9381E08FB43dBEA72";
+
+    const { timestamp } = await web3.eth.getBlock('latest');
+    startTime = web3.toBigNumber(timestamp  + 120);
+    endTime = web3.toBigNumber(timestamp + 2592000);
+    salePeriods = [startTime + 86400, startTime + (86400 * 2), startTime + (86400 * 3), startTime + (86400 * 4), endTime];
+
+  } else if (network == "kovan") {
+    founder1 = "0x00fF840777cb9819f4b0E2bE6d14Dd23AFbC9302";
+    founder2 = "0x0043C515e8469cc3eCad179DE85BF87b8253e81d";
+    founder3 = "0x00c804C84f0D9F554ac776E02482DE8056240ad5";
+
+    whitelister = "0xD83E198C95bb4a325030c1DD393F2F80D6E7e8E8";
+
+    const { timestamp } = await web3.eth.getBlock('latest');
+    startTime = web3.toBigNumber(timestamp  + 120);
+    endTime = web3.toBigNumber(startTime + 432000);
+    salePeriods = [startTime + 86400, startTime + (86400 * 2), startTime + (86400 * 3), startTime + (86400 * 4), endTime];
+
+  } else if (network == "mainnet") {
+    founder1 = "";
+    founder2 = "";
+    founder3 = "";
+
+    whitelister = "";
+    startTime = 1525176000;
+    endTime = 1530403199;
+    salePeriods = [1526256000, 1527465600, 1528070400, 1528675200, endTime];
+
+  }
 
     const founders = [ founder1, founder2, founder3 ];
 
-    const team = [ founder1, founder2, founder3, contrib1, contrib2 ];
-    const team_div = [ 200, 200, 200, 200, 200];
-
-    const { timestamp } = await web3.eth.getBlock('latest');
-    const startTime = web3.toBigNumber(timestamp  + 120);
-    const endTime = web3.toBigNumber(timestamp + 2592000);
-
-    const salePeriods = [1523836799, 1525046399, 1526255999, 1527465599];
-
-    var tokenSaleInstance, tokenAddress, unsoldVaultInstance, teamVaultInstances;
-
-    var multiSigInstance, tokenSaleInstance, tokenAddress, unsoldVaultInstance, teamVaultInstances;
+    var multiSigInstance, tokenSaleInstance, tokenAddress, unsoldVaultInstance;
 
     deployer
     .then(function(){
@@ -57,11 +77,13 @@ async function performMigration(deployer, network) {
       
       // Deploy Token sale contract
       return TokenSale.new(
-        startTime,
+	whitelister,
+	startTime,
         endTime,
         tokenEthRate,
         goalInWei,
-        tokenSaleTokens,
+	presaleCap,
+        totalTokenSaleCap,
         multiSigInstance.address,
         salePeriods
       );
@@ -71,44 +93,7 @@ async function performMigration(deployer, network) {
        tokenSaleInstance = instance;
        console.log('token sale address: ' + tokenSaleInstance.address);
        return tokenSaleInstance.token.call();
-    })
-    .then(function(address){
-       tokenAddress = address;
-       console.log('token address: ' + tokenAddress);
-      
-       // Deploy team token vaults
-       var vault_promises = [];
-       for (var i=0; i < team.length; i++){
-          vault_promises.push(TimelockVault.new(
-	          tokenAddress,
-            team[i],
-	          timelockUntil
-	        ));
-       }
-       return Promise.all(vault_promises);
-    })
-    .then(function(vault_instances){
-      // Set team vaults in token sale
-      teamVaultInstances = vault_instances;
-      var team_vault_addresses = [];
-      for (var i=0; i < vault_instances.length; i++){
-        team_vault_addresses.push(vault_instances[i].address);
-        console.log('team member '+i+' has vault address: '+vault_instances[i].address);
-      }
-
-      var team_vault_set_promises = [];
-      for (var j=0; j < team_vault_addresses.length; j++){
-        console.log("Will set vault for wallet "+team[j]+" with vault "+team_vault_addresses[j]+ " and div " + team_div[j]);
-        team_vault_set_promises.push(
-          tokenSaleInstance.setTeamVault(team[j], team_vault_addresses[j], team_div[j])
-        );
-      }
-      return Promise.all(team_vault_set_promises);
-    })
-    .then(function(team_vault_set_results){
-      console.log('Done setting team vaults');
     });
-  };
   
 };
 
