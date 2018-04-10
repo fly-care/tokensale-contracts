@@ -109,7 +109,7 @@ var ERC20Basic = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC2
         await FlyCareTokenSale.new(whitelisterAddress, this.startTime, this.endTime, rate, goal, presaleCap, 0, wallet, this.salePeriods, {from: owner}).should.be.rejectedWith(EVMRevert);
       });
 
-      it('shoulSupplyMintedzero presale cap', async function () {
+      it('should fail with zero presale cap', async function () {
         await FlyCareTokenSale.new(whitelisterAddress, this.startTime, this.endTime, rate, goal, 0, totalTokenSaleCap, wallet, this.salePeriods, {from: owner}).should.be.rejectedWith(EVMRevert);
       });
 
