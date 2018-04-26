@@ -13,8 +13,6 @@ const totalTokenSaleCap = toWei(130000000); // total token sale cap 130M
 const goalInEth = 5000;
 const goalInWei = toWei(goalInEth);
 
-const timelockUntil = 1562025599; // Jun 31, 2019 - 23:59:59 GMT
-
 async function performMigration(deployer, network) {
   
   var founder1, founder2, founder3, whitelister; 
@@ -53,9 +51,9 @@ async function performMigration(deployer, network) {
     founder3 = "";
 
     whitelister = "";
-    startTime = 1525176000;
-    endTime = 1530403199;
-    salePeriods = [1526256000, 1527465600, 1528070400, 1528675200, endTime];
+    startTime = 1526299200;
+    endTime = 1531612799;
+    salePeriods = [1527465600, 1528675200, 1529280000, 1529928000, endTime];
 
   }
 
@@ -77,12 +75,12 @@ async function performMigration(deployer, network) {
       
       // Deploy Token sale contract
       return TokenSale.new(
-	whitelister,
-	startTime,
+	      whitelister,
+	      startTime,
         endTime,
         tokenEthRate,
         goalInWei,
-	presaleCap,
+	      presaleCap,
         totalTokenSaleCap,
         multiSigInstance.address,
         salePeriods
