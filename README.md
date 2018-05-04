@@ -4,7 +4,7 @@ Welcome to the FlyCare token sale repository !
 
 This repository contains the Ethereum smart contracts for the [FlyCare](https://flycare.com) token sale & FCC ERC20 token.
 
-To learn more about the project, please visit our [website](https://flycare.com). For a deep dive, please consult our [whitepaper](https://flycare.com/whitepaper).
+To learn more about the project, please visit our [website](https://flycare.com). For a deep dive, please consult our [whitepaper](https://flycare.com/assets/FC-White%20paper-02-05-18-EN_double_en_continu.pdf).
 
 We'd love to get your feedback, so don't hesitate to reach out to us at info@flycare.com
 ## Requirements
@@ -25,5 +25,5 @@ The tests have been implemented using the Truffle framework.
 
 To run the full test suite, issue the following command in a terminal:
 ```
-node_modules/.bin/truffle test
+npm run test
 ```
