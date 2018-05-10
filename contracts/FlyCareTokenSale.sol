@@ -127,7 +127,7 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
      * @dev Modifier for address whith whitelisting rights
     */
     modifier onlyWhitelister(){
-	require(msg.sender == whitelister);
+        require(msg.sender == whitelister);
         _;
     }
 

@@ -7,11 +7,11 @@ var StampifyToken = artifacts.require("./FlyCareToken.sol");
 
 contract('FlyCareToken', function(accounts) {
 
-    it('should be named \'FlyCare Token\'', async function() {
+    it('should be named \'flyCARE Token\'', async function() {
       let token = await StampifyToken.new();
       let name = await token.name();
 
-      assert.equal(name, "FlyCare Token");
+      assert.equal(name, "flyCARE Token");
     });
 
     it('should have \'FCC\' as symbol', async function() {
