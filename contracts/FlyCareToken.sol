@@ -7,7 +7,7 @@ import "zeppelin-solidity/contracts/token/ERC20/BurnableToken.sol";
 
 contract FlyCareToken is MintableToken, PausableToken, BurnableToken {
 
-    string public constant name = "FlyCare Token";
+    string public constant name = "flyCARE Token";
     string public constant symbol = "FCC";
     uint8 public constant decimals = 18;
 

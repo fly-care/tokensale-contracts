@@ -10,7 +10,7 @@ const tokenEthRate = new web3.BigNumber(1500);
 const presaleCap = toWei(32500000); // presale cap 32.5M
 const totalTokenSaleCap = toWei(130000000); // total token sale cap 130M
 
-const goalInEth = 5000;
+const goalInEth = 1550;
 const goalInWei = toWei(goalInEth);
 
 async function performMigration(deployer, network) {
@@ -24,7 +24,6 @@ async function performMigration(deployer, network) {
     // Test wallet addresses (replace with your local Ganache/TestRPC/... accounts for testing)
     founder1 = "0x00fF840777cb9819f4b0E2bE6d14Dd23AFbC9302";
     founder2 = "0x0043C515e8469cc3eCad179DE85BF87b8253e81d";
-    founder3 = "0x00c804C84f0D9F554ac776E02482DE8056240ad5";
 
     whitelister = "0x00a329c0648769A73afAc7F9381E08FB43dBEA72";
 
@@ -36,7 +35,6 @@ async function performMigration(deployer, network) {
   } else if (network == "kovan") {
     founder1 = "0x00fF840777cb9819f4b0E2bE6d14Dd23AFbC9302";
     founder2 = "0x0043C515e8469cc3eCad179DE85BF87b8253e81d";
-    founder3 = "0x00c804C84f0D9F554ac776E02482DE8056240ad5";
 
     whitelister = "0xD83E198C95bb4a325030c1DD393F2F80D6E7e8E8";
 
@@ -46,20 +44,19 @@ async function performMigration(deployer, network) {
     salePeriods = [startTime + 86400, startTime + (86400 * 2), startTime + (86400 * 3), startTime + (86400 * 4), endTime];
 
   } else if (network == "mainnet") {
-    founder1 = "";
-    founder2 = "";
-    founder3 = "";
+    founder1 = "0x06e486dABC4a42B3e5CBE49cA05D1Fcf794e11Ed"; //Bruno
+    founder2 = "0x1Ce5c199B23122690f50137F462790a79a2FF780"; //Dieter
 
-    whitelister = "";
+    whitelister = "0x00B60A2C170E86b4a4c3671116a371452579aE42";
     startTime = 1526299200;
     endTime = 1531612799;
     salePeriods = [1527465600, 1528675200, 1529280000, 1529928000, endTime];
 
   }
 
-    const founders = [ founder1, founder2, founder3 ];
+    const founders = [ founder1, founder2];
 
-    var multiSigInstance, tokenSaleInstance, tokenAddress, unsoldVaultInstance;
+    var multiSigInstance, tokenSaleInstance, tokenAddress;
 
     deployer
     .then(function(){

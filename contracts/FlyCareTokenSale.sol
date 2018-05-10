@@ -69,23 +69,23 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
     function getCurrentRate() public view returns (uint256) {
         uint256 time = now;
         if (time <= salePeriods[0]) {
-            return 1875;
+            return 4031;
         }
         
         if (time <= salePeriods[1]) {
-            return 1765;
+            return 3794;
         }
 
         if (time <= salePeriods[2]) {
-            return 1667;
+            return 3583;
         }
 
         if (time <= salePeriods[3]) {
-            return 1579;
+            return 3395;
         }
 
         if (time <= salePeriods[4]) {
-            return 1500;
+            return 3225;
         }
         return rate;
     }
@@ -127,7 +127,7 @@ contract FlyCareTokenSale is RefundableCrowdsale, WhitelistedCrowdsale, TokenCap
      * @dev Modifier for address whith whitelisting rights
     */
     modifier onlyWhitelister(){
-	require(msg.sender == whitelister);
+        require(msg.sender == whitelister);
         _;
     }
 
