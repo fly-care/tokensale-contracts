@@ -49,7 +49,7 @@ async function performMigration(deployer, network) {
 
     whitelister = "0x00B60A2C170E86b4a4c3671116a371452579aE42";
     startTime = 1526299200;
-    endTime = 1531612799;
+    endTime = 1546300799;
     salePeriods = [1527465600, 1528675200, 1529280000, 1529928000, endTime];
 
   }
